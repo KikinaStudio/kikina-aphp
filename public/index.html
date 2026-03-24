@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Kikina — Salle de Reveil</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #000000;
+    --orange: #E8742A;
+    --bar-off: #2E2E2E;
+    --text: #FFFFFF;
+    --text-dim: #999999;
+    --muted: rgba(255,255,255,0.3);
+    --pad: 6.15vw;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100%;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+  }
+  .app {
+    display: grid;
+    grid-template-rows: auto 1fr auto auto auto;
+    height: 100dvh;
+    height: 100%;
+    padding: 0 var(--pad);
+    padding-top: calc(env(safe-area-inset-top, 44px) + 12px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 12px);
+  }
+  /* === TOP BAR === */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 1.4vh;
+  }
+  .top-left { display: flex; align-items: center; gap: 2.5vw; }
+  .logo-wrap { position: relative; flex-shrink: 0; }
+  .hospital-logo {
+    width: 13.4vw; height: 12.5vw;
+    max-width: 64px; max-height: 60px;
+    border-radius: 50%; object-fit: cover; display: block;
+  }
+  .status-dot {
+    position: absolute; bottom: 1px; right: 1px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); border: 2px solid var(--bg);
+    transition: background 0.4s;
+  }
+  .status-dot.live { background: #4DA65B; }
+  .status-dot.error { background: #D4534B; }
+  .status-dot.reconnecting { background: var(--orange); animation: blink 1s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .room-label { font-size: clamp(14px, 4.1vw, 20px); font-weight: 500; }
+  .track-name {
+    font-size: clamp(11px, 3.2vw, 15px);
+    font-weight: 400;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50vw;
+  }
+  .play-btn {
+    width: clamp(40px, 12.8vw, 64px); height: clamp(40px, 12.8vw, 64px);
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .play-btn svg { width: 100%; height: 100%; fill: var(--text); }
+  .play-btn:active svg { fill: var(--orange); }
+  .icon-pause { display: none; }
+  .is-playing .icon-play { display: none; }
+  .is-playing .icon-pause { display: block; }
+  /* === BARS === */
+  .bars-zone {
+    display: flex;
+    align-items: center;
+    min-height: 0;
+  }
+  .bars-container {
+    width: 100%;
+    height: 92%;
+    display: flex;
+    align-items: stretch;
+    gap: clamp(3px, 1.2vw, 7px);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+  }
+  .bar { flex: 1; min-width: 0; }
+  .bar.active { background: var(--orange); }
+  .bar.inactive { background: var(--bar-off); }
+  /* === VOLUME === */
+  .volume-display { padding: 1.6vh 0 0.7vh; }
+  .volume-pct {
+    font-size: clamp(60px, 22.9vw, 130px);
+    font-weight: 400;
+    line-height: normal;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  /* === DESCRIPTION === */
+  .description { padding: 0.5vh 0 1.6vh; }
+  .desc-text {
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 131.25%;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  /* === FOOTER === */
+  .footer {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 4vw, 24px);
+  }
+  .btn-savoir {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--muted);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: clamp(12px, 3.6vw, 18px);
+    font-weight: 400;
+    font-family: 'Inter', sans-serif;
+    padding: clamp(4px, 1.2vw, 7px) clamp(16px, 5vw, 32px);
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-savoir:active { border-color: var(--text); color: var(--text); }
+  /* === FEEDBACK BUTTONS + BADGES === */
+  .fb-btn {
+    position: relative;
+    width: clamp(36px, 12vw, 60px);
+    height: clamp(36px, 12vw, 60px);
+    flex-shrink: 0;
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .fb-btn svg {
+    width: clamp(26px, 8.8vw, 44px);
+    height: clamp(23px, 7.9vw, 40px);
+    stroke: var(--muted); stroke-width: 1.5; fill: none;
+    transition: all 0.2s;
+  }
+  .fb-btn:active svg { stroke: var(--text); }
+  .fb-btn.flash-like svg { stroke: var(--orange); fill: var(--orange); }
+  .fb-btn.flash-dislike svg { stroke: var(--text); }
+  .badge {
+    position: absolute;
+    top: -2px; right: -4px;
+    min-width: 18px; height: 18px;
+    background: var(--orange);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 5px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .badge.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .dislike .badge { background: var(--text-dim); }
+  /* Toast */
+  .toast {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: rgba(40,40,40,0.95);
+    color: var(--text); font-size: 14px; font-family: 'Inter', sans-serif;
+    padding: 12px 24px; border-radius: 12px;
+    opacity: 0; transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none; z-index: 10; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  @media (min-width: 768px) {
+    .app { max-width: 500px; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="logo-wrap">
+        <img class="hospital-logo" src="data:image/jpeg;base64,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" alt="AP-HP">
+        <div class="status-dot" id="statusDot"></div>
+      </div>
+      <div>
+        <span class="room-label">Salle de reveil</span>
+        <div class="track-name" id="trackName"></div>
+      </div>
+    </div>
+    <button class="play-btn" id="playBtn" aria-label="Lecture / Pause">
+      <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5.14v14.72a1 1 0 0 0 1.53.85l11.18-7.36a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14z"/></svg>
+      <svg class="icon-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+    </button>
+  </div>
+  <div class="bars-zone">
+    <div class="bars-container" id="barsContainer"></div>
+  </div>
+  <div class="volume-display">
+    <div class="volume-pct" id="volumePct">60%</div>
+  </div>
+  <div class="description">
+    <p class="desc-text">Ambiance sonore pensee pour accompagner le reveil des patients apres une intervention. Vous pouvez indiquer a tout moment si le son vous convient.</p>
+  </div>
+  <div class="footer">
+    <button class="btn-savoir" id="btnSavoir">En savoir plus</button>
+    <button class="fb-btn dislike" id="dislikeBtn" aria-label="Ce passage ne me convient pas">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+        <line x1="4" y1="4" x2="20" y2="20" stroke-width="2"/>
+      </svg>
+      <span class="badge" id="dislikeBadge">0</span>
+    </button>
+    <button class="fb-btn like" id="likeBtn" aria-label="Ce passage me plait">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      <span class="badge" id="likeBadge">0</span>
+    </button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(function() {
+  // All requests go through Vercel proxy (HTTPS) to avoid mixed content
+  var STREAM_URL = '/api/stream';
+  var FEEDBACK_URL = '/api/feedback';
+  var STATUS_URL = '/api/status';
+  var RECONNECT_DELAY = 2000;
+  var MAX_RECONNECT = 999; // stream proxy times out every ~55s, reconnect is normal
+  var NUM_BARS = 10;
+
+  var app = document.getElementById('app');
+  var playBtn = document.getElementById('playBtn');
+  var barsContainer = document.getElementById('barsContainer');
+  var volumePct = document.getElementById('volumePct');
+  var likeBtn = document.getElementById('likeBtn');
+  var dislikeBtn = document.getElementById('dislikeBtn');
+  var likeBadge = document.getElementById('likeBadge');
+  var dislikeBadge = document.getElementById('dislikeBadge');
+  var statusDot = document.getElementById('statusDot');
+  var trackNameEl = document.getElementById('trackName');
+  var toastEl = document.getElementById('toast');
+  var currentTrack = '';
+
+  var audio = null, isPlaying = false;
+  var volume = 0.6;
+  var reconnectCount = 0, reconnectTimer = null, toastTimer = null;
+
+  // Badge counters from localStorage
+  var counts = JSON.parse(localStorage.getItem('kikina_counts') || '{"like":0,"dislike":0}');
+  function updateBadges() {
+    likeBadge.textContent = counts.like;
+    dislikeBadge.textContent = counts.dislike;
+    if (counts.like > 0) likeBadge.classList.add('visible');
+    if (counts.dislike > 0) dislikeBadge.classList.add('visible');
+    localStorage.setItem('kikina_counts', JSON.stringify(counts));
+  }
+  updateBadges();
+
+  for (var i = 0; i < NUM_BARS; i++) {
+    var bar = document.createElement('div');
+    bar.className = 'bar';
+    barsContainer.appendChild(bar);
+  }
+
+  function updateBars() {
+    var activeBars = Math.round(volume * NUM_BARS);
+    var bars = barsContainer.children;
+    for (var i = 0; i < bars.length; i++) {
+      bars[i].className = i < activeBars ? 'bar active' : 'bar inactive';
+    }
+    volumePct.textContent = Math.round(volume * 100) + '%';
+  }
+
+  function setVolume(v) {
+    volume = Math.max(0, Math.min(1, v));
+    if (audio) audio.volume = volume;
+    updateBars();
+  }
+
+  function volFromPointer(x) {
+    var rect = barsContainer.getBoundingClientRect();
+    setVolume((x - rect.left) / rect.width);
+  }
+
+  barsContainer.addEventListener('pointerdown', function(e) {
+    e.preventDefault();
+    barsContainer.setPointerCapture(e.pointerId);
+    volFromPointer(e.clientX);
+  });
+  barsContainer.addEventListener('pointermove', function(e) {
+    if (barsContainer.hasPointerCapture(e.pointerId)) volFromPointer(e.clientX);
+  });
+  barsContainer.addEventListener('pointerup', function(e) {
+    barsContainer.releasePointerCapture(e.pointerId);
+  });
+
+  function createAudio() {
+    if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); audio = null; }
+    audio = new Audio();
+    audio.volume = volume;
+    audio.addEventListener('playing', function() {
+      isPlaying = true; reconnectCount = 0;
+      app.classList.add('is-playing'); setStatusDot('live');
+    });
+    audio.addEventListener('pause', function() {
+      if (!audio.error) { isPlaying = false; app.classList.remove('is-playing'); setStatusDot('idle'); }
+    });
+    audio.addEventListener('error', function() {
+      isPlaying = false; app.classList.remove('is-playing'); tryReconnect();
+    });
+    audio.addEventListener('stalled', function() { setStatusDot('reconnecting'); });
+    audio.addEventListener('waiting', function() { setStatusDot('reconnecting'); });
+  }
+
+  function togglePlay() {
+    if (isPlaying) { audio.pause(); return; }
+    createAudio();
+    audio.src = STREAM_URL + '?t=' + Date.now();
+    audio.play().catch(function() { setStatusDot('error'); });
+  }
+
+  function tryReconnect() {
+    if (reconnectCount >= MAX_RECONNECT) { setStatusDot('error'); return; }
+    reconnectCount++;
+    setStatusDot('reconnecting');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(function() {
+      createAudio();
+      audio.src = STREAM_URL + '?t=' + Date.now();
+      audio.play().catch(function() { tryReconnect(); });
+    }, RECONNECT_DELAY);
+  }
+
+  function setStatusDot(state) {
+    statusDot.className = 'status-dot';
+    if (state === 'live') statusDot.classList.add('live');
+    else if (state === 'error') statusDot.classList.add('error');
+    else if (state === 'reconnecting') statusDot.classList.add('reconnecting');
+  }
+
+  function formatTC(s) {
+    var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+    if (h > 0) return h+'h'+String(m).padStart(2,'0')+'m'+String(sec).padStart(2,'0')+'s';
+    return m+'m'+String(sec).padStart(2,'0')+'s';
+  }
+
+  function recordFeedback(type) {
+    if (!audio || !isPlaying) { showToast('Lancez la lecture d\'abord'); return; }
+    var tc = Math.floor(audio.currentTime);
+    var entry = {
+      type: type,
+      track: currentTrack || 'inconnu',
+      timecode_seconds: tc,
+      timecode_display: formatTC(tc),
+      timestamp: new Date().toISOString(),
+      room: 'salle_de_reveil'
+    };
+
+    // Update badge
+    counts[type]++;
+    updateBadges();
+
+    if (type === 'like') {
+      flash(likeBtn, 'flash-like');
+      showToast('Aime a ' + entry.timecode_display);
+    } else {
+      flash(dislikeBtn, 'flash-dislike');
+      showToast('Pas convaincu a ' + entry.timecode_display);
+    }
+
+    // Also store in localStorage as fallback
+    var log = JSON.parse(localStorage.getItem('kikina_feedback') || '[]');
+    log.push(entry);
+    localStorage.setItem('kikina_feedback', JSON.stringify(log));
+
+    // Send to server
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', FEEDBACK_URL, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(entry));
+    } catch(e) {}
+
+    console.log('[Kikina Feedback]', JSON.stringify(entry));
+  }
+
+  function flash(btn, cls) {
+    btn.classList.add(cls);
+    setTimeout(function() { btn.classList.remove(cls); }, 600);
+  }
+
+  function showToast(msg) {
+    clearTimeout(toastTimer);
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 1800);
+  }
+
+  // Poll current track name from server
+  function checkStatus() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', STATUS_URL, true);
+    xhr.timeout = 5000;
+    xhr.onload = function() {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data.currentTrack) {
+          currentTrack = data.currentTrack;
+          // Clean up filename for display: remove extension, replace underscores
+          var display = currentTrack.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+          trackNameEl.textContent = display;
+        }
+      } catch(e) {}
+    };
+    xhr.send();
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  likeBtn.addEventListener('click', function() { recordFeedback('like'); });
+  dislikeBtn.addEventListener('click', function() { recordFeedback('dislike'); });
+
+  checkStatus();
+  setInterval(checkStatus, 5000);
+  updateBars();
+})();
+</script>
+</body>
+</html>
