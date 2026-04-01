@@ -240,9 +240,8 @@
   <div class="volume-display">
     <div class="volume-label" id="volumeLabel">Normal</div>
   </div>
-  <div class="now-playing" id="nowPlaying" style="padding:0.5vh 0;opacity:0;transition:opacity 0.3s;">
-    <p style="font-size:13px;color:var(--text-dim);letter-spacing:0.02em;"><span style="color:var(--accent);">&#9835;</span> <span id="trackName">—</span></p>
-  </div>
+  <!-- Track name hidden from user, used internally for feedback tagging -->
+  <div id="nowPlaying" style="display:none;"><span id="trackName"></span></div>
   <div class="description">
     <p class="desc-text" id="descText">Ambiance sonore pensee pour accompagner le reveil des patients apres une intervention. Vous pouvez indiquer a tout moment si le son vous convient.</p>
   </div>
@@ -298,8 +297,8 @@
   var RECONNECT_DELAY = 3000;
   var MAX_RECONNECT = 10;
   var NUM_BARS = 9;
-  var VOL_MIN = 0.1;
-  var VOL_MAX = 0.9;
+  var VOL_MIN = 0.3;  // base (0.5) minus 20%
+  var VOL_MAX = 0.7;  // base (0.5) plus 20%
 
   var app = document.getElementById('app');
   var playBtn = document.getElementById('playBtn');
@@ -364,9 +363,8 @@
   }
 
   function getVolumeLabel(v) {
-    var pct = Math.round(v * 100);
-    if (pct <= 30) return 'Bas';
-    if (pct <= 65) return 'Normal';
+    if (v <= 0.35) return 'Bas';
+    if (v <= 0.6) return 'Normal';
     return 'Fort';
   }
 
