@@ -13,13 +13,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid feedback' });
     }
 
-    const line = JSON.stringify({
+    const data = {
       type: entry.type,
-      timecode_seconds: entry.timecode_seconds || 0,
-      timecode_display: entry.timecode_display || '0m00s',
       timestamp: entry.timestamp || new Date().toISOString(),
       room: entry.room || 'salle_de_reveil',
-    });
+    };
+    if (entry.type === 'message') {
+      data.text = entry.text || '';
+    } else {
+      data.timecode_seconds = entry.timecode_seconds || 0;
+      data.timecode_display = entry.timecode_display || '0m00s';
+    }
+    const line = JSON.stringify(data);
 
     // Always log (visible in Vercel runtime logs)
     console.log('[Kikina Feedback]', line);

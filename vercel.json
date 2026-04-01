@@ -1,7 +1,7 @@
 {
   "rewrites": [
-    { "source": "/api/stream", "destination": "/api/stream" },
-    { "source": "/api/feedback", "destination": "/api/feedback" },
-    { "source": "/api/export", "destination": "/api/export" }
+    { "source": "/stream", "destination": "/index.html" },
+    { "source": "/repos", "destination": "/index.html" },
+    { "source": "/attente", "destination": "/index.html" }
   ]
 }
