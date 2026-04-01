@@ -240,6 +240,9 @@
   <div class="volume-display">
     <div class="volume-label" id="volumeLabel">Normal</div>
   </div>
+  <div class="now-playing" id="nowPlaying" style="padding:0.5vh 0;opacity:0;transition:opacity 0.3s;">
+    <p style="font-size:13px;color:var(--text-dim);letter-spacing:0.02em;"><span style="color:var(--accent);">&#9835;</span> <span id="trackName">—</span></p>
+  </div>
   <div class="description">
     <p class="desc-text" id="descText">Ambiance sonore pensee pour accompagner le reveil des patients apres une intervention. Vous pouvez indiquer a tout moment si le son vous convient.</p>
   </div>
@@ -290,6 +293,8 @@
   document.getElementById('descText').textContent = config.desc;
 
   var FEEDBACK_URL = '/api/feedback';
+  var RADIO_STATUS_URL = 'https://radio.kikinalab.com/api/status';
+  var STATUS_POLL_INTERVAL = 10000; // 10s
   var RECONNECT_DELAY = 3000;
   var MAX_RECONNECT = 10;
   var NUM_BARS = 9;
@@ -311,10 +316,33 @@
   var avisText = document.getElementById('avisText');
   var avisSend = document.getElementById('avisSend');
   var avisClose = document.getElementById('avisClose');
+  var nowPlaying = document.getElementById('nowPlaying');
+  var trackNameEl = document.getElementById('trackName');
 
   var audio = null, isPlaying = false;
   var volume = 0.5; // Normal = 50%
+  var currentTrack = '';
   var reconnectCount = 0, reconnectTimer = null, toastTimer = null;
+
+  // -------------------------------------------------------
+  // Poll radio status to show current track
+  // -------------------------------------------------------
+  function pollStatus() {
+    fetch(RADIO_STATUS_URL).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.currentTrack) {
+        // Clean up filename: "Ambroise_Pare___J11.wav" → "Ambroise Pare - J11"
+        currentTrack = data.currentTrack
+          .replace(/\.[^.]+$/, '')        // remove extension
+          .replace(/___/g, ' - ')         // triple underscore → dash
+          .replace(/_/g, ' ');            // underscores → spaces
+        trackNameEl.textContent = currentTrack;
+        nowPlaying.style.opacity = '1';
+      }
+      if (data.playing) setStatusDot('live');
+    }).catch(function() {});
+  }
+  pollStatus();
+  setInterval(pollStatus, STATUS_POLL_INTERVAL);
 
   // Badge counters from localStorage (per room)
   var storageKey = 'kikina_counts_' + config.room;
@@ -376,7 +404,16 @@
     barsContainer.releasePointerCapture(e.pointerId);
   });
 
-  // Audio
+  // -------------------------------------------------------
+  // Audio playback (browser-side)
+  //
+  // TODO pour integration radio :
+  // Remplacer cette section par des appels a l'API radio.
+  // Ex: POST /api/play/{streamId}, POST /api/pause/{streamId}
+  // Le volume devrait controler le volume de sortie du serveur
+  // radio, pas le volume du navigateur.
+  // Ex: POST /api/volume/{streamId} { volume: 0.5 }
+  // -------------------------------------------------------
   function createAudio() {
     if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); audio = null; }
     audio = new Audio();
@@ -447,10 +484,10 @@
   }
 
   function recordFeedback(type) {
-    if (!audio || !isPlaying) { showToast('Lancez la lecture d\'abord'); return; }
-    var tc = Math.floor(audio.currentTime);
+    var tc = audio && isPlaying ? Math.floor(audio.currentTime) : 0;
     var entry = {
       type: type,
+      track: currentTrack || 'inconnu',
       timecode_seconds: tc,
       timecode_display: formatTC(tc),
       timestamp: new Date().toISOString(),
@@ -492,6 +529,7 @@
     var entry = {
       type: 'message',
       text: text,
+      track: currentTrack || 'inconnu',
       timecode_seconds: audio && isPlaying ? Math.floor(audio.currentTime) : null,
       timecode_display: audio && isPlaying ? formatTC(Math.floor(audio.currentTime)) : null,
       timestamp: new Date().toISOString(),
